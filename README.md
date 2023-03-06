@@ -1,4 +1,5 @@
 # TelegramGPT
+![Logo](./TelegramGPT.png)
 ## Simple Telegram bot tied with ChatGPT language model.
 
 ### Installation
