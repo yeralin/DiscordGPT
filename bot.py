@@ -39,7 +39,8 @@ async def start(update: Update, context: CallbackContext) -> None:
     Returns:
         None.
     """
-    context.user_data['tokenized_message_limiter'] = TokenizedMessageLimiter()
+    if 'tokenized_message_limiter' not in context.user_data:
+        context.user_data['tokenized_message_limiter'] = TokenizedMessageLimiter()
     await context.bot.send_message(chat_id=update.effective_chat.id, text=welcome_message)
 
 
@@ -54,6 +55,8 @@ async def system(update: Update, context: CallbackContext) -> None:
     Returns:
         None.
     """
+    if 'tokenized_message_limiter' not in context.user_data:
+        context.user_data['tokenized_message_limiter'] = TokenizedMessageLimiter()
     system_message = update.message.text.replace('/system', '').strip()
     tokenized_message_limiter = context.user_data['tokenized_message_limiter']
     if system_message:
@@ -74,6 +77,8 @@ async def message(update: Update, context: CallbackContext) -> None:
     Returns:
         None.
     """
+    if 'tokenized_message_limiter' not in context.user_data:
+        context.user_data['tokenized_message_limiter'] = TokenizedMessageLimiter()
     user_text = update.message.text
     tokenized_message_limiter = context.user_data['tokenized_message_limiter']
     tokenized_message_limiter.add_message(user_text, MessageRole.USER)
