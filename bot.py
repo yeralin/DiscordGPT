@@ -59,6 +59,23 @@ async def system(update: Update, context: CallbackContext) -> None:
                                        text=f'Your current system message: {system_message}')
 
 
+async def clean(update: Update, context: CallbackContext) -> None:
+    """
+    Handles the /clean or /clear command and resets the message history while keeping the system message.
+
+    Args:
+        update (Update): The update object from Telegram.
+        context (CallbackContext): The context object from Telegram.
+    """
+    if 'tokenized_message_limiter' not in context.user_data:
+        context.user_data[
+            'tokenized_message_limiter'] = TokenizedMessageLimiter()
+    tokenized_message_limiter = context.user_data['tokenized_message_limiter']
+    tokenized_message_limiter.clean_messages()
+    await context.bot.send_message(chat_id=update.effective_chat.id,
+                                   text=constants.CLEAN_MESSAGE)
+
+
 async def message(update: Update, context: CallbackContext) -> None:
     """
     Handles incoming messages from users and sends a response from the assistant.
@@ -113,11 +130,12 @@ def main() -> None:
     # Configure main handlers
     start_handler = CommandHandler('start', start, user_filter)
     system_handler = CommandHandler('system', system, user_filter)
+    clean_handler = CommandHandler(['clean', 'clear'], clean, user_filter)
     message_handler = MessageHandler(
         user_filter & filters.TEXT & (~filters.COMMAND), message)
     rejection_handler = MessageHandler(~user_filter, rejection)
     application.add_handlers(
-        [start_handler, system_handler, message_handler, rejection_handler])
+        [start_handler, system_handler, clean_handler, message_handler, rejection_handler])
     application.run_polling()
 
 

@@ -85,6 +85,13 @@ class TokenizedMessageLimiter:
         if self.token_count > self.limit:
             _ = self._prune_messages()
 
+    def clean_messages(self):
+        """
+        Cleans message history and resets the system message.
+        """
+        _ = self._prune_messages(0)
+        self.set_system_message(self.system_message.msg['content'])
+
     def serialize_messages(self) -> List[str]:
         """
         Serializes stored messages into a single list
@@ -93,13 +100,18 @@ class TokenizedMessageLimiter:
         messages.extend([entry.msg for entry in self.message_history])
         return messages
 
-    def _prune_messages(self) -> List[MessageEntry]:
+    def _prune_messages(self, limit: int = None) -> List[MessageEntry]:
         """
         Removes messages from the message history until the token count is below the limit.
+
+        Args:
+            limit (int, optional): The maximum limit of token count.
 
         Returns:
             A list of the removed messages.
         """
+        if limit is None:
+            limit = self.limit
         pruned_messages: List[MessageEntry] = []
         while self.token_count > self.limit:
             removed_entry = self.message_history.popleft()
