@@ -3,6 +3,7 @@ import logging
 import os
 import openai
 import constants
+from util import typing_action
 from telegram import Update
 from telegram.ext import (
     filters,
@@ -66,19 +67,22 @@ async def message(update: Update, context: CallbackContext) -> None:
         update (Update): The update object from Telegram.
         context (CallbackContext): The context object from Telegram.
     """
+    typing_task = context.application.create_task(
+        typing_action(context, update.effective_chat.id))
     if 'tokenized_message_limiter' not in context.user_data:
         context.user_data[
             'tokenized_message_limiter'] = TokenizedMessageLimiter()
     user_text = update.message.text
     tokenized_message_limiter = context.user_data['tokenized_message_limiter']
     tokenized_message_limiter.add_message(user_text, Role.USER)
-    response = openai.ChatCompletion.create(
+    response = await openai.ChatCompletion.acreate(
         model="gpt-3.5-turbo",
         messages=tokenized_message_limiter.serialize_messages()
     )
     assistant_response = response['choices'][0]['message']['content']
     tokenized_message_limiter.add_message(assistant_response,
                                           Role.ASSISTANT)
+    typing_task.cancel()
     await context.bot.send_message(chat_id=update.effective_chat.id,
                                    text=assistant_response)
 
