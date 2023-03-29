@@ -1,11 +1,10 @@
-from ast import Dict
 from enum import Enum
-from typing import List
+from typing import List, Dict
 from collections import deque
 
 import copy
 
-from token_limiter.message_entry import MessageEntry
+from .message_entry import MessageEntry
 
 
 class Role(Enum):
