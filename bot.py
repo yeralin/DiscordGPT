@@ -53,10 +53,12 @@ async def system(update: Update, context: CallbackContext) -> None:
     tokenized_message_limiter = context.user_data['tokenized_message_limiter']
     if system_message:
         tokenized_message_limiter.set_system_message(system_message)
+        await context.bot.send_message(chat_id=update.effective_chat.id,
+                                       text=f'Successfully set system message to "{system_message}"')
     else:
         system_message = tokenized_message_limiter.system_message.msg['content']
         await context.bot.send_message(chat_id=update.effective_chat.id,
-                                       text=f'Your current system message: {system_message}')
+                                       text=f'Your current system message is "{system_message}"')
 
 
 async def clean(update: Update, context: CallbackContext) -> None:
