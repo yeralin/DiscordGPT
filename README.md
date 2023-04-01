@@ -1,29 +1,25 @@
 # TelegramGPT
-![Logo](./TelegramGPT.png)
+![Logo](./DiscordGPT.png)
 ## Simple Telegram bot tied with ChatGPT language model.
 
 ### Installation
 1. Clone this repository:
-`git clone https://github.com/yeralin/TelegramGPT.git`
+`git clone https://github.com/yeralin/DiscordGPT.git`
 2. Install the required dependencies (required python version >3.7):
 `pip install -r requirements.txt`
-3. Get OpenAI API key (`OPENAI_API_KEY`) and a Telegram bot token (`TELEGRAM_TOKEN`)
+3. Get OpenAI API key (`OPENAI_API_KEY`) and a Discord bot token (`DISCORD_TOKEN`)
 4. Create a .env file in the root directory of the project and add the following:
 ```
 OPENAI_API_KEY=<your-openai-api-key>
-TELEGRAM_TOKEN=<your-telegram-bot-token>
+DISCORD_TOKEN=<your-discord-bot-token>
 ```
-> Make sure to replace <your-openai-api-key> and <your-telegram-bot-token> with your actual API key and token.
+> Make sure to replace <your-openai-api-key> and <your-discord-bot-token> with your actual API key and token.
 
 ### Usage
 To start the bot, run: `python bot.py`
 
-Once the bot is running, you can interact with it by sending messages to it on Telegram.
+Once the bot is running, you can interact with it by sending messages to it on Discord.
 
-### Available commands:
-* `/system <system-message>` - Sets the system message. If no message is provided, returns the current system message.
-* All other messages will be interpreted as messages to the bot.
-  
 ### How to get OpenAI API key
 1. Go to the OpenAI website (https://openai.com/) and click on the "Get started for free" button.
 2. Create an account by filling out the registration form.
@@ -34,12 +30,13 @@ Once the bot is running, you can interact with it by sending messages to it on T
 7. Store the API key under `.env` file as `OPENAI_API_KEY=<your-openai-api-key>`
 > OpenAI offers a free trial with $200 in credits, so you won't be charged if you stay within that limit.
   
-### How to get Telegram Bot token
-1. Open the Telegram app and search for the BotFather bot.
-2. Start a chat with the BotFather and type `/newbot` to create a new bot.
-3. Follow the instructions from BotFather to provide a name and username for your bot.
-4. Once you have successfully created the bot, BotFather will provide you with a token.
-5. Store the token under `.env` file as `TELEGRAM_TOKEN=<your-telegram-bot-token>`
+### How to get Discord Bot token
+1. Go to the Discord Developer Portal.
+2. Click the "New Application" button, and give your application a name.
+3. Click on your application and go to the "Bot" tab in the left sidebar.
+4. Click the "Add Bot" button to create a bot account for your application.
+5. Scroll down to the "Token" section and click the "Copy" button to copy your bot token to the clipboard.
+6. Save the token in a secure location and never share it with anyone.
 
 ### License
 

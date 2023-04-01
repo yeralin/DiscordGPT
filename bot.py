@@ -1,145 +1,69 @@
-from dotenv import load_dotenv; load_dotenv()  # Load all variables first
-import logging
 import os
-import openai
+
+from dotenv import load_dotenv;
+
 import constants
-from util import typing_action
-from telegram import Update
-from telegram.ext import (
-    filters,
-    ApplicationBuilder,
-    CallbackContext,
-    CommandHandler,
-    MessageHandler,
-    PicklePersistence,
-)
+from util import construct_gpt_payload, safe_send
 
-from token_limiter.token_limiter import TokenizedMessageLimiter, Role
+import openai
+import discord
+from discord.ext import commands
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 
-async def start(update: Update, context: CallbackContext) -> None:
+@bot.event
+async def on_ready() -> None:
     """
-    Handles the /start command and initializes the message limiter.
-
-    Args:
-        update (Update): The update object from Telegram.
-        context (CallbackContext): The context object from Telegram.
+    Called when the bot has successfully connected to Discord.
     """
-    if 'tokenized_message_limiter' not in context.user_data:
-        context.user_data[
-            'tokenized_message_limiter'] = TokenizedMessageLimiter()
-
-    await context.bot.send_message(chat_id=update.effective_chat.id,
-                                   text=constants.WELCOME_MESSAGE)
+    print(f'{bot.user.name} has connected to Discord!')
 
 
-async def system(update: Update, context: CallbackContext) -> None:
+@bot.command(name='start', help='Starts a new conversation session.')
+async def start(ctx: commands.Context) -> None:
     """
-    Handles the /system command and sets the system message or gets the current one.
-
-    Args:
-        update (Update): The update object from Telegram.
-        context (CallbackContext): The context object from Telegram.
+    Starts a new conversation session by sending a welcome message to the user.
     """
-    if 'tokenized_message_limiter' not in context.user_data:
-        context.user_data[
-            'tokenized_message_limiter'] = TokenizedMessageLimiter()
-    system_message = update.message.text.replace('/system', '').strip()
-    tokenized_message_limiter = context.user_data['tokenized_message_limiter']
-    if system_message:
-        tokenized_message_limiter.set_system_message(system_message)
-        await context.bot.send_message(chat_id=update.effective_chat.id,
-                                       text=f'Successfully set system message to "{system_message}"')
-    else:
-        system_message = tokenized_message_limiter.system_message.msg['content']
-        await context.bot.send_message(chat_id=update.effective_chat.id,
-                                       text=f'Your current system message is "{system_message}"')
+    await ctx.send(constants.WELCOME_MESSAGE)
 
 
-async def clean(update: Update, context: CallbackContext) -> None:
+@bot.listen("on_message")
+async def on_message(message: discord.Message):
     """
-    Handles the /clean or /clear command and resets the message history while keeping the system message.
+    This function is called every time a message is sent in any channel the bot is a member of.
 
-    Args:
-        update (Update): The update object from Telegram.
-        context (CallbackContext): The context object from Telegram.
+    The message content is used to construct a payload for the OpenAI GPT API.
+    The response from the API is then sent back to the original channel using the `safe_send()` function.
+
+    :param message: The message object representing the message that triggered this function.
     """
-    if 'tokenized_message_limiter' not in context.user_data:
-        context.user_data[
-            'tokenized_message_limiter'] = TokenizedMessageLimiter()
-    tokenized_message_limiter = context.user_data['tokenized_message_limiter']
-    tokenized_message_limiter.clean_messages()
-    await context.bot.send_message(chat_id=update.effective_chat.id,
-                                   text=constants.CLEAN_MESSAGE)
-
-
-async def message(update: Update, context: CallbackContext) -> None:
-    """
-    Handles incoming messages from users and sends a response from the assistant.
-
-    Args:
-        update (Update): The update object from Telegram.
-        context (CallbackContext): The context object from Telegram.
-    """
-    typing_task = context.application.create_task(
-        typing_action(context, update.effective_chat.id))
-    if 'tokenized_message_limiter' not in context.user_data:
-        context.user_data[
-            'tokenized_message_limiter'] = TokenizedMessageLimiter()
-    user_text = update.message.text
-    tokenized_message_limiter = context.user_data['tokenized_message_limiter']
-    tokenized_message_limiter.add_message(user_text, Role.USER)
+    # Ignore bot messages
+    if message.author.bot:
+        return
+    # The first message in the channel is the system message, ack.
+    if isinstance(message.channel, discord.TextChannel):
+        await message.add_reaction('👍')
+        return
+    # Process commands
+    if message.content.startswith(('!', '?')):
+        await bot.process_commands(message)
+        return
+    messages, model = await construct_gpt_payload(message.channel)
     response = await openai.ChatCompletion.acreate(
-        model="gpt-3.5-turbo",
-        messages=tokenized_message_limiter.serialize_messages()
+        model=model,
+        messages=messages
     )
     assistant_response = response['choices'][0]['message']['content']
-    tokenized_message_limiter.add_message(assistant_response,
-                                          Role.ASSISTANT)
-    typing_task.cancel()
-    await context.bot.send_message(chat_id=update.effective_chat.id,
-                                   text=assistant_response)
-
-
-async def rejection(update: Update, context: CallbackContext) -> None:
-    """
-    Handles rejection messages for non-allowed users.
-
-    Args:
-        update (Update): The update object from Telegram.
-        context (CallbackContext): The context object from Telegram.
-    """
-    await context.bot.send_message(chat_id=update.effective_chat.id,
-                                   text=constants.REJECTION_MESSAGE)
-
-
-def main() -> None:
-    """
-    Main entry for the Telegram bot.
-    """
-    # Configure optional user filter
-    user_id = os.getenv("USER_ID")
-    user_filter = filters.User(int(user_id)) if user_id else filters.ALL
-    # Configure bot application
-    persistence = PicklePersistence(filepath='./local_storage')
-    application = ApplicationBuilder().token(
-        os.getenv("TELEGRAM_TOKEN")).persistence(persistence).build()
-    # Configure main handlers
-    start_handler = CommandHandler('start', start, user_filter)
-    system_handler = CommandHandler('system', system, user_filter)
-    clean_handler = CommandHandler(['clean', 'clear'], clean, user_filter)
-    message_handler = MessageHandler(
-        user_filter & filters.TEXT & (~filters.COMMAND), message)
-    rejection_handler = MessageHandler(~user_filter, rejection)
-    application.add_handlers(
-        [start_handler, system_handler, clean_handler, message_handler, rejection_handler])
-    application.run_polling()
+    await safe_send(message.channel, assistant_response)
 
 
 if __name__ == '__main__':
-    main()
+    bot.run(TOKEN)

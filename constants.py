@@ -1,19 +1,25 @@
+from enum import Enum
+
+MODEL_MESSAGE_REGEX = r'^(GPT): (.+)$'
+class GPTModel(Enum):
+    """
+    Enum class for different GPT models with their corresponding names and token limits.
+    """
+    CHAT_GPT = ('gpt-3.5-turbo', 4096)
+    GPT_4 = ('gpt-4', 8192)
+    def __init__(self, version: str, token_limit: int):
+        self.version = version
+        self.token_limit = token_limit
+
 ### Static messages
-WELCOME_MESSAGE = """I am TelegramGPT bot!
+WELCOME_MESSAGE = """I am DiscordGPT bot!
 
-Available commands:
+A **new channel message** will be set as a **system message**, and all conversation **must go in threads**.
 
-/system <system-message>
-The system message helps set the behavior of the assistant 
-For example, `/system You are a helpful assistant who answers questions clearly and concisely`
+To choose a GPT model start your system message with a model name.
+For example,
+> GPT-4: You are the world's best assistant. 
 
-/clean or /clear
-Cleans up current message history while preserving set system message.
 
 To learn more visit https://platform.openai.com/docs/guides/chat
 """
-
-REJECTION_MESSAGE = """Unfortunately this bot is no longer available.
-You can use the free version at https://chat.openai.com/chat
-"""
-CLEAN_MESSAGE = "Successfully cleaned message history for the TelegramGPT bot"
