@@ -4,7 +4,8 @@ from discord import MessageType
 from dotenv import load_dotenv
 
 import constants
-from util import construct_gpt_payload, safe_send, initiate_thread, update_thread_model, match_model_by_emoji
+from util import safe_send, initiate_thread, update_thread_model, match_model_by_emoji
+from gpt import construct_gpt_payload
 
 import openai
 import discord
@@ -16,9 +17,9 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 load_dotenv()
+openai.api_key = os.getenv('OPENAI_API_KEY')
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 DEFAULT_MODEL = constants.GPTModel.CHAT_GPT
-openai.api_key = os.getenv('OPENAI_API_KEY')
 
 
 @bot.event
@@ -35,6 +36,7 @@ async def start(ctx: commands.Context) -> None:
     Starts a new conversation session by sending a welcome message to the user.
     """
     await ctx.send(constants.WELCOME_MESSAGE)
+
 
 @bot.listen('on_raw_reaction_add')
 async def on_reaction(payload: discord.RawReactionActionEvent):
@@ -54,6 +56,7 @@ async def on_reaction(payload: discord.RawReactionActionEvent):
         channel = await bot.fetch_channel(payload.channel_id)
         thread = channel.get_thread(payload.message_id)
         await update_thread_model(thread, model)
+
 
 @bot.listen('on_message')
 async def on_message(message: discord.Message):
