@@ -2,6 +2,7 @@ import re
 from typing import Dict, List, Tuple, Union
 
 import discord
+import requests
 import tiktoken
 
 from constants import GPTModel
@@ -117,11 +118,17 @@ async def construct_gpt_payload(thread: discord.Thread) -> Tuple[List[Dict[str, 
     messages.append(system_message)
     # Fetches history in reverse order
     async for msg in thread.history():
+        if msg.type != discord.MessageType.default:
+            continue
+        content = msg.content
+        for attachment in msg.attachments:
+            response = requests.get(attachment.url)
+            content += response.text
         entry = {
-            'role': 'assistant' if msg.author.bot else 'user', 'content': msg.content
+            'role': 'assistant' if msg.author.bot else 'user', 'content': content
         }
         tokens += await calculate_tokens(entry)
-        if tokens > model.token_limit or msg == starter_message:
+        if tokens > model.token_limit:
             break
         messages.insert(1, entry)
     return messages, model
