@@ -1,9 +1,10 @@
 import os
 
-from dotenv import load_dotenv;
+from discord import MessageType
+from dotenv import load_dotenv
 
 import constants
-from util import construct_gpt_payload, safe_send
+from util import construct_gpt_payload, safe_send, initiate_thread, update_thread_model, match_model_by_emoji
 
 import openai
 import discord
@@ -35,23 +36,42 @@ async def start(ctx: commands.Context) -> None:
     """
     await ctx.send(constants.WELCOME_MESSAGE)
 
+@bot.listen('on_raw_reaction_add')
+async def on_reaction(payload: discord.RawReactionActionEvent):
+    """
+    This function is called every time a reaction event is fired in any channel the bot is a member of.
+    The reaction is used to determine a GPT version to use within a given thread.
 
-@bot.listen("on_message")
+    Args:
+        payload: incoming payload containing emoji reaction and message ID.
+    """
+    # Ignore bot reactions
+    if payload.member.bot:
+        return
+    # if reaction is one of GPTModel emojis, update model
+    model = match_model_by_emoji(payload.emoji.name)
+    if model:
+        channel = await bot.fetch_channel(payload.channel_id)
+        thread = channel.get_thread(payload.message_id)
+        await update_thread_model(thread, model)
+
+@bot.listen('on_message')
 async def on_message(message: discord.Message):
     """
     This function is called every time a message is sent in any channel the bot is a member of.
 
     The message content is used to construct a payload for the OpenAI GPT API.
-    The response from the API is then sent back to the original channel using the `safe_send()` function.
+    The response from the API is then sent back to the original thread using the `safe_send()` function.
 
-    :param message: The message object representing the message that triggered this function.
+    Args:
+        message: The message object representing the message that triggered this function.
     """
-    # Ignore bot messages
-    if message.author.bot:
+    # Ignore bot or thread starter messages
+    if message.author.bot or message.type is MessageType.thread_starter_message:
         return
-    # The first message in the channel is the system message, ack.
+    # The first message in the channel is the system message, ack with creating a thread
     if isinstance(message.channel, discord.TextChannel):
-        await message.add_reaction('👍')
+        await initiate_thread(message, DEFAULT_MODEL)
         return
     # Process commands
     if message.content.startswith(('!', '?')):
@@ -59,7 +79,7 @@ async def on_message(message: discord.Message):
         return
     messages, model = await construct_gpt_payload(message.channel)
     response = await openai.ChatCompletion.acreate(
-        model=model,
+        model=model.version,
         messages=messages
     )
     assistant_response = response['choices'][0]['message']['content']
