@@ -15,7 +15,8 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+DEFAULT_MODEL = constants.GPTModel.CHAT_GPT
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 
@@ -66,4 +67,4 @@ async def on_message(message: discord.Message):
 
 
 if __name__ == '__main__':
-    bot.run(TOKEN)
+    bot.run(DISCORD_TOKEN)
