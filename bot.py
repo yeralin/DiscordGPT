@@ -80,12 +80,13 @@ async def on_message(message: discord.Message):
     if message.content.startswith(('!', '?')):
         await bot.process_commands(message)
         return
-    messages, model = await construct_gpt_payload(message.channel)
-    response = await openai.ChatCompletion.acreate(
-        model=model.version,
-        messages=messages
-    )
-    assistant_response = response['choices'][0]['message']['content']
+    async with message.channel.typing():
+        messages, model = await construct_gpt_payload(message.channel)
+        response = await openai.ChatCompletion.acreate(
+            model=model.version,
+            messages=messages
+        )
+        assistant_response = response['choices'][0]['message']['content']
     await safe_send(message.channel, assistant_response)
 
 
