@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 import constants
 import gpt
-from util import initiate_thread, update_thread_model, match_model_by_emoji, collect_and_send
+from util import initiate_thread, update_thread_model, collect_and_send
 
 import openai
 import discord
@@ -51,7 +51,7 @@ async def on_reaction(payload: discord.RawReactionActionEvent):
     if payload.member.bot:
         return
     # if reaction is one of GPTModel emojis, update model
-    model = match_model_by_emoji(payload.emoji.name)
+    model = gpt.match_model_by_emoji(payload.emoji.name)
     if model:
         channel = await bot.fetch_channel(payload.channel_id)
         thread = channel.get_thread(payload.message_id)
@@ -80,14 +80,7 @@ async def on_message(message: discord.Message):
     if message.content.startswith(('!', '?')):
         await bot.process_commands(message)
         return
-    async with message.channel.typing():
-        messages, model = await construct_gpt_payload(message.channel)
-        response = await openai.ChatCompletion.acreate(
-            model=model.version,
-            messages=messages
-        )
-        assistant_response = response['choices'][0]['message']['content']
-    await safe_send(message.channel, assistant_response)
+    await collect_and_send(message.channel)
 
 
 if __name__ == '__main__':
