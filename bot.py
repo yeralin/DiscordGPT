@@ -4,8 +4,8 @@ from discord import MessageType
 from dotenv import load_dotenv
 
 import constants
-from util import safe_send, initiate_thread, update_thread_model, match_model_by_emoji
-from gpt import construct_gpt_payload
+import gpt
+from util import initiate_thread, update_thread_model, match_model_by_emoji, collect_and_send
 
 import openai
 import discord
@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 load_dotenv()
 openai.api_key = os.getenv('OPENAI_API_KEY')
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-DEFAULT_MODEL = constants.GPTModel.CHAT_GPT
+DEFAULT_MODEL = gpt.GPTModel.CHAT_GPT
 
 
 @bot.event

@@ -1,16 +1,44 @@
-from typing import Dict, Tuple, List
+from enum import Enum
+from typing import Dict, Tuple, List, Union
 
 import discord
 import requests
 
 import tiktoken
 
-from constants import GPTModel
-from util import match_model_by_emoji
-
 
 class BotGPTException(Exception):
     pass
+
+
+class GPTModel(Enum):
+    """
+    Enum class for different GPT models with their corresponding name, token limit, and emoji name
+    """
+    CHAT_GPT = ('gpt-3.5-turbo', 4096, '3️⃣')
+    GPT_4 = ('gpt-4', 8192, '4️⃣')
+
+    def __init__(self, version: str, token_limit: int, emoji_name: str):
+        self.version = version
+        self.token_limit = token_limit
+        self.emoji = emoji_name
+
+
+def match_model_by_emoji(emoji: str) -> Union[GPTModel, None]:
+    """
+    Returns a GPTModel enum value that matches the specified emoji.
+
+    Args:
+        emoji (str): The emoji string to match.
+
+    Returns:
+        GPTModel or None: The GPTModel enum value that matches the specified emoji,
+            or None if no match is found.
+    """
+    for model in GPTModel:
+        if emoji == model.emoji:
+            return model
+    return None
 
 
 async def calculate_tokens(msg: Dict[str, str], model: str = 'gpt-3.5-turbo') -> int:

@@ -1,8 +1,7 @@
-from typing import Union
-
 import discord
+import openai
 
-from constants import GPTModel
+from gpt import construct_gpt_payload, GPTModel
 
 
 async def safe_send(ctx: discord.abc.Messageable, text: str) -> None:
@@ -42,20 +41,3 @@ async def update_thread_model(thread: discord.Thread, model: GPTModel):
     await starter_message.clear_reactions()
     await starter_message.add_reaction(model.emoji)
     await thread.edit(name=f'Using model: {model.version}')
-
-
-def match_model_by_emoji(emoji: str) -> Union[GPTModel, None]:
-    """
-    Returns a GPTModel enum value that matches the specified emoji.
-
-    Args:
-        emoji (str): The emoji string to match.
-
-    Returns:
-        GPTModel or None: The GPTModel enum value that matches the specified emoji,
-            or None if no match is found.
-    """
-    for model in GPTModel:
-        if emoji == model.emoji:
-            return model
-    return None
