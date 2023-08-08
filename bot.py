@@ -4,8 +4,8 @@ from discord import MessageType
 from dotenv import load_dotenv
 
 import constants
-import gpt
-from util import initiate_thread, update_thread_model, collect_and_send
+from gpt import GPTModel
+from discord_util import DiscordUtil
 
 import openai
 import discord
@@ -19,7 +19,6 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 load_dotenv()
 openai.api_key = os.getenv('OPENAI_API_KEY')
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-DEFAULT_MODEL = gpt.GPTModel.CHAT_GPT
 
 
 @bot.event
@@ -38,24 +37,35 @@ async def start(ctx: commands.Context) -> None:
     await ctx.send(constants.WELCOME_MESSAGE)
 
 
-@bot.listen('on_raw_reaction_add')
-async def on_reaction(payload: discord.RawReactionActionEvent):
+@bot.listen('on_interaction')
+async def on_interaction(interaction: discord.Interaction):
     """
-    This function is called every time a reaction event is fired in any channel the bot is a member of.
-    The reaction is used to determine a GPT version to use within a given thread.
+    Processes interactions with the bot and triggers actions based on the interaction type.
 
     Args:
-        payload: incoming payload containing emoji reaction and message ID.
+        interaction: An Interaction object that contains the data about the interaction.
     """
-    # Ignore bot reactions
-    if payload.member.bot:
-        return
-    # if reaction is one of GPTModel emojis, update model
-    model = gpt.match_model_by_emoji(payload.emoji.name)
-    if model:
-        channel = await bot.fetch_channel(payload.channel_id)
-        thread = channel.get_thread(payload.message_id)
-        await update_thread_model(thread, model)
+    if interaction.type == discord.InteractionType.component:
+        custom_id = interaction.data['custom_id']
+
+        # GPT Model selected
+        if 'model' in custom_id:
+            selected_value = custom_id.split('_')[-1]
+            selected_model = GPTModel.from_version(selected_value)
+            await interaction.channel.edit(name=f'Using model: {selected_model.version}')
+            await interaction.response.edit_message(**DiscordUtil.generate_model_options(selected_model))
+
+        # Temperature selected
+        elif 'temperature' in custom_id:
+            selected_value = interaction.data['values'][0]
+            selected_temperature = float(selected_value)
+            await interaction.response.edit_message(**DiscordUtil.generate_temperature_options(selected_temperature))
+
+        # Top P Value selected
+        elif 'top_p' in custom_id:
+            selected_value = interaction.data['values'][0]
+            selected_top_p = float(selected_value)
+            await interaction.response.edit_message(**DiscordUtil.generate_top_p_value_options(selected_top_p))
 
 
 @bot.listen('on_message')
@@ -74,13 +84,13 @@ async def on_message(message: discord.Message):
         return
     # The first message in the channel is the system message, ack with creating a thread
     if isinstance(message.channel, discord.TextChannel):
-        await initiate_thread(message, DEFAULT_MODEL)
+        await DiscordUtil.initiate_thread(message)
         return
     # Process commands
     if message.content.startswith(('!', '?')):
         await bot.process_commands(message)
         return
-    await collect_and_send(message.channel)
+    await DiscordUtil.collect_and_send(message.channel)
 
 
 if __name__ == '__main__':
