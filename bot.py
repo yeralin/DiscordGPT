@@ -68,6 +68,25 @@ async def on_interaction(interaction: discord.Interaction):
             await interaction.response.edit_message(**DiscordUtil.generate_top_p_value_options(selected_top_p))
 
 
+@bot.listen('on_raw_reaction_add')
+async def on_reaction(payload: discord.RawReactionActionEvent):
+    """
+    This function is called every time a reaction event is fired in any channel the bot is a member of.
+
+    Args:
+        payload: incoming payload containing emoji reaction and message ID.
+    """
+    # Ignore bot reactions
+    if payload.member.bot:
+        return
+    # Regenerate the response
+    if payload.emoji.name == '🔁':
+        channel = await bot.fetch_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        await message.delete()
+        await DiscordUtil.collect_and_send(channel)
+
+
 @bot.listen('on_message')
 async def on_message(message: discord.Message):
     """
