@@ -17,9 +17,9 @@ class GPTModel(Enum):
     Enum class for different GPT models with their corresponding name, token limit, and emoji name
     """
     CHAT_GPT = ('gpt-3.5-turbo', 4096, True)
-    CHAT_GPT_16K = ('gpt-3.5-turbo-16k', 16384, True)
-    GPT_4 = ('gpt-4', 8192, True)
-    GPT_4_32K = ('gpt-4-32k', 32768, False)
+    CHAT_GPT_16K = ('gpt-3.5-turbo-1106', 16385, True)
+    GPT_4_VISION = ('gpt-4-vision-preview', 128000, True)
+    GPT_4_TURBO = ('gpt-4-1106-preview', 128000, True)
 
     def __init__(self, version: str, token_limit: int, available: bool):
         self.version = version
@@ -49,7 +49,7 @@ class GPTModel(Enum):
 class GPT:
     """A class to encapsulate OpenAI GPT related functionalities."""
 
-    DEFAULT_MODEL = GPTModel.CHAT_GPT
+    DEFAULT_MODEL = GPTModel.GPT_4_TURBO
     DEFAULT_TEMPERATURE = 1.0
     DEFAULT_TOP_P = 1.0
 
