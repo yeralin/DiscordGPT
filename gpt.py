@@ -1,12 +1,11 @@
 from enum import Enum
 from typing import Tuple, List, Dict
 
+import base64
 import discord
 import requests
 import tiktoken
-from openai import AsyncOpenAI, RateLimitError
-
-from constants import TEXT_PLAIN_UTF8
+from openai import AsyncOpenAI, RateLimitError, APIStatusError
 
 
 class BotGPTException(Exception):
@@ -67,14 +66,9 @@ class GPT:
         Returns:
             gpt_response (str): the generated gpt response.
         """
-        try:
-            model, temperature, top_p, messages = await self._collect_gpt_payload(thread)
-            gpt_response = await self._send_payload(model, temperature, top_p, messages)
-            return gpt_response
-        except RateLimitError as ex:
-            # Render retry button on rate limit
-            from discord_util import RetryButton
-            await thread.send(ex.user_message, view=RetryButton())
+        model, temperature, top_p, messages = await self._collect_gpt_payload(thread)
+        gpt_response = await self._send_payload(model, temperature, top_p, messages)
+        return gpt_response
 
     async def _collect_gpt_payload(self, thread: discord.Thread) -> Tuple[GPTModel, float, float, List[Dict]]:
         """
@@ -106,9 +100,13 @@ class GPT:
         tokens = 0
 
         # Add GPT's system message
-        entry = {'role': 'system', 'content': starter_message.system_content}
-        tokens += await self._calculate_tokens(starter_message.system_content, model)
-        messages.append(entry)
+        system_message_content = [{
+            'type': 'text',
+            'text': starter_message.system_content
+        }]
+        system_message = {'role': 'system', 'content': starter_message.system_content}
+        tokens += await self._calculate_tokens(system_message_content, model)
+        messages.append(system_message)
         reached_token_limit = False
         # Fetches history in reverse order
         async for msg in thread.history():
@@ -118,19 +116,27 @@ class GPT:
             entries = []
             # Handle message content
             if msg.content:
-                content = msg.content
+                content = [{
+                    'type': 'text',
+                    'text': msg.content
+                }]
                 entry = {
-                    'role': 'assistant' if msg.author.bot else 'user', 'content': content
+                    'role': 'assistant' if msg.author.bot else 'user',
+                    'content': content
                 }
+                entries.append(entry)
                 tokens += await self._calculate_tokens(content, model)
                 if tokens > model.token_limit:
                     reached_token_limit = True
             # Handle message attachments
             for attachment in msg.attachments:
+                content = await self._handle_attachment(attachment)
                 entry = {
                     'role': 'assistant' if msg.author.bot else 'user',
-                    'content': await self._handle_attachment(attachment)
+                    'content': content
                 }
+                entries.append(entry)
+                tokens += await self._calculate_tokens(content, model)
                 if tokens > model.token_limit:
                     reached_token_limit = True
             if reached_token_limit:
@@ -160,12 +166,13 @@ class GPT:
             model=model.version,
             messages=messages,
             temperature=temperature,
-            top_p=top_p
+            top_p=top_p,
+            max_tokens=4096 if model == GPTModel.GPT_4_VISION else None
         )
         assistant_response = response.choices[0].message.content
         return assistant_response
 
-    async def _calculate_tokens(self, msg: str, model: GPTModel) -> int:
+    async def _calculate_tokens(self, content: list[dict[str, str]], model: GPTModel) -> int:
         """
         Calculates the number of tokens required to process a message.
 
@@ -178,7 +185,15 @@ class GPT:
         """
         try:
             encoding = tiktoken.encoding_for_model(model.version)
-            return len(encoding.encode(msg))
+            tokens = 0
+            for entry in content:
+                if entry['type'] == 'text':
+                    tokens += len(encoding.encode(entry['text']))
+                elif entry['type'] == 'image_url':
+                    """TODO: Calculate image tokens as per 
+                    https://platform.openai.com/docs/guides/vision/calculating-costs"""
+                    pass
+            return tokens
         except KeyError:
             raise NotImplementedError(
                 f'_calculate_tokens() is not presently implemented for model {model.version}'
@@ -186,7 +201,7 @@ class GPT:
 
     async def _handle_attachment(self, attachment: discord.Attachment) -> list[dict[str, str]]:
         content_type = attachment.content_type
-        if content_type == TEXT_PLAIN_UTF8:
+        if 'text/plain' in content_type:
             response = requests.get(attachment.url)
             if response.status_code == 200:
                 return [{
@@ -195,3 +210,18 @@ class GPT:
                 }]
             else:
                 raise BotGPTException(f'Failed to download attachment: {response.status_code}')
+        elif content_type in ('image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'):
+            response = requests.get(attachment.url)
+            if response.status_code == 200:
+                # Convert the image content to base64
+                base64_image = base64.b64encode(response.content).decode('utf-8')
+                return [{
+                    'type': 'image_url',
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}"
+                    }
+                }]
+            else:
+                raise BotGPTException(f'Failed to download attachment: {response.status_code}')
+        else:
+            raise BotGPTException(f'Unsupported attachment type: {content_type}')

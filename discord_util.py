@@ -1,4 +1,5 @@
 import discord
+from openai import RateLimitError, APIStatusError
 
 from gpt import GPT, GPTModel
 
@@ -28,7 +29,7 @@ class DiscordUtil:
     """
 
     @staticmethod
-    async def safe_send(ctx: discord.abc.Messageable, text: str) -> None:
+    async def safe_send(ctx: discord.abc.Messageable, text: str, view: discord.ui.View = None) -> None:
         """
         Sends a message to the given channel or user, breaking it up if necessary to avoid Discord's message length limit.
         """
@@ -36,7 +37,7 @@ class DiscordUtil:
             break_pos = text.rfind('\n', 0, 2000)
             await ctx.send(text[:break_pos])
             text = text[break_pos:]
-        await ctx.send(text)
+        await ctx.send(text, view=view if view else None)
 
     @staticmethod
     async def collect_and_send(thread: discord.Thread, gpt_client: GPT) -> None:
@@ -56,8 +57,14 @@ class DiscordUtil:
             openai.error.RateLimitError: If the rate limit is exceeded for the GPT API call.
         """
         async with thread.typing():
-            assistant_response = await gpt_client.communicate(thread)
-            await DiscordUtil.safe_send(thread, assistant_response)
+            try:
+                assistant_response = await gpt_client.communicate(thread)
+                await DiscordUtil.safe_send(thread, assistant_response)
+            except RateLimitError as ex:
+                # Render retry button on rate limit
+                await DiscordUtil.safe_send(thread, ex.user_message, view=RetryButton())
+            except Exception as ex:
+                await DiscordUtil.safe_send(thread, ex.message)
 
     @staticmethod
     async def initiate_thread(message: discord.Message):

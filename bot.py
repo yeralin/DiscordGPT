@@ -17,6 +17,7 @@ load_dotenv()
 discord_bot = commands.Bot(command_prefix='!', intents=intents)
 gpt_client = GPT(api_key=os.getenv('OPENAI_API_KEY'))
 
+
 @discord_bot.event
 async def on_ready() -> None:
     """
@@ -46,10 +47,14 @@ async def on_interaction(interaction: discord.Interaction):
 
         # GPT Model selected
         if 'model' in custom_id:
-            selected_value = custom_id.split('_')[-1]
-            selected_model = GPTModel.from_version(selected_value)
-            await interaction.channel.edit(name=f'Using model: {selected_model.version}')
-            await interaction.response.edit_message(**DiscordUtil.generate_model_options(selected_model))
+            try:
+                selected_value = custom_id.split('_')[-1]
+                selected_model = GPTModel.from_version(selected_value)
+                await interaction.channel.edit(name=f'Using model: {selected_model.version}')
+                await interaction.response.edit_message(**DiscordUtil.generate_model_options(selected_model))
+            except Exception:  # Reset to default
+                await interaction.channel.edit(name=f'Using model: {GPT.DEFAULT_MODEL.version}')
+                await interaction.response.edit_message(**DiscordUtil.generate_model_options())
 
         # Temperature selected
         elif 'temperature' in custom_id:

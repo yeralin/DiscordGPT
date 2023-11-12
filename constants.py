@@ -11,5 +11,3 @@ For example,
 
 To learn more visit https://platform.openai.com/docs/guides/chat
 """
-
-TEXT_PLAIN_UTF8 = 'text/plain; charset=utf-8'
