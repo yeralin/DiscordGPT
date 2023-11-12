@@ -39,7 +39,7 @@ class DiscordUtil:
         await ctx.send(text)
 
     @staticmethod
-    async def collect_and_send(thread: discord.Thread):
+    async def collect_and_send(thread: discord.Thread, gpt_client: GPT) -> None:
         """
         Collects history messages from the thread, constructs a GPT payload, and sends the assistant's response.
 
@@ -50,12 +50,13 @@ class DiscordUtil:
 
         Args:
             thread (discord.Thread): The thread where messages are collected and the assistant's response is sent.
+            gpt_client (GPT): The GPT client used to send the payload to the GPT model.
 
         Raises:
             openai.error.RateLimitError: If the rate limit is exceeded for the GPT API call.
         """
         async with thread.typing():
-            assistant_response = await GPT.communicate(thread)
+            assistant_response = await gpt_client.communicate(thread)
             await DiscordUtil.safe_send(thread, assistant_response)
 
     @staticmethod

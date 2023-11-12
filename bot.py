@@ -1,43 +1,39 @@
 import os
 
+import discord
 from discord import MessageType
+from discord.ext import commands
 from dotenv import load_dotenv
 
-import constants
-from gpt import GPTModel
+from constants import WELCOME_MESSAGE
 from discord_util import DiscordUtil
-
-import openai
-import discord
-from discord.ext import commands
+from gpt import GPTModel, GPT
 
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix='!', intents=intents)
-
 load_dotenv()
-openai.api_key = os.getenv('OPENAI_API_KEY')
-DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 
+discord_bot = commands.Bot(command_prefix='!', intents=intents)
+gpt_client = GPT(api_key=os.getenv('OPENAI_API_KEY'))
 
-@bot.event
+@discord_bot.event
 async def on_ready() -> None:
     """
     Called when the bot has successfully connected to Discord.
     """
-    print(f'{bot.user.name} has connected to Discord!')
+    print(f'{discord_bot.user.name} has connected to Discord!')
 
 
-@bot.command(name='start', help='Starts a new conversation session.')
+@discord_bot.command(name='start', help='Starts a new conversation session.')
 async def start(ctx: commands.Context) -> None:
     """
     Starts a new conversation session by sending a welcome message to the user.
     """
-    await ctx.send(constants.WELCOME_MESSAGE)
+    await ctx.send(WELCOME_MESSAGE)
 
 
-@bot.listen('on_interaction')
+@discord_bot.listen('on_interaction')
 async def on_interaction(interaction: discord.Interaction):
     """
     Processes interactions with the bot and triggers actions based on the interaction type.
@@ -68,7 +64,7 @@ async def on_interaction(interaction: discord.Interaction):
             await interaction.response.edit_message(**DiscordUtil.generate_top_p_value_options(selected_top_p))
 
 
-@bot.listen('on_raw_reaction_add')
+@discord_bot.listen('on_raw_reaction_add')
 async def on_reaction(payload: discord.RawReactionActionEvent):
     """
     This function is called every time a reaction event is fired in any channel the bot is a member of.
@@ -81,13 +77,13 @@ async def on_reaction(payload: discord.RawReactionActionEvent):
         return
     # Regenerate the response
     if payload.emoji.name == '🔁':
-        channel = await bot.fetch_channel(payload.channel_id)
+        channel = await discord_bot.fetch_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
         await message.delete()
-        await DiscordUtil.collect_and_send(channel)
+        await DiscordUtil.collect_and_send(channel, gpt_client)
 
 
-@bot.listen('on_message')
+@discord_bot.listen('on_message')
 async def on_message(message: discord.Message):
     """
     This function is called every time a message is sent in any channel the bot is a member of.
@@ -107,10 +103,10 @@ async def on_message(message: discord.Message):
         return
     # Process commands
     if message.content.startswith(('!', '?')):
-        await bot.process_commands(message)
+        await discord_bot.process_commands(message)
         return
-    await DiscordUtil.collect_and_send(message.channel)
+    await DiscordUtil.collect_and_send(message.channel, gpt_client)
 
 
 if __name__ == '__main__':
-    bot.run(DISCORD_TOKEN)
+    discord_bot.run(os.getenv('DISCORD_TOKEN'))
