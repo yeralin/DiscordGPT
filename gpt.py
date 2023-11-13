@@ -114,12 +114,9 @@ class GPT:
             if msg in [starter_message, model_message, temperature_message, top_p_message]:
                 continue
             entries = []
-            # Handle message content
-            if msg.content:
-                content = [{
-                    'type': 'text',
-                    'text': msg.content
-                }]
+            # Handle message attachments
+            for attachment in msg.attachments:
+                content = await self._handle_attachment(attachment)
                 entry = {
                     'role': 'assistant' if msg.author.bot else 'user',
                     'content': content
@@ -128,9 +125,12 @@ class GPT:
                 tokens += await self._calculate_tokens(content, model)
                 if tokens > model.token_limit:
                     reached_token_limit = True
-            # Handle message attachments
-            for attachment in msg.attachments:
-                content = await self._handle_attachment(attachment)
+            # Handle actual message content
+            if msg.content:
+                content = [{
+                    'type': 'text',
+                    'text': msg.content
+                }]
                 entry = {
                     'role': 'assistant' if msg.author.bot else 'user',
                     'content': content
