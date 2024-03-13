@@ -5,9 +5,11 @@ from discord import MessageType
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from constants import WELCOME_MESSAGE
+from constants import WELCOME_MESSAGE, DEFAULT_MODEL
 from discord_util import DiscordUtil
-from gpt import GPTModel, GPT
+from llm.anthropic import Anthropic
+from llm.gpt import GPT
+from llm.base_llm import LLMModel
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -15,7 +17,11 @@ intents.message_content = True
 load_dotenv()
 
 discord_bot = commands.Bot(command_prefix='!', intents=intents)
-gpt_client = GPT(api_key=os.getenv('OPENAI_API_KEY'))
+
+llm_clients = {
+    'Anthropic': Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY')),
+    'OpenAI': GPT(api_key=os.getenv('OPENAI_API_KEY'))
+}
 
 
 @discord_bot.event
@@ -49,11 +55,11 @@ async def on_interaction(interaction: discord.Interaction):
         if 'model' in custom_id:
             try:
                 selected_value = custom_id.split('_')[-1]
-                selected_model = GPTModel.from_version(selected_value)
+                selected_model = LLMModel.from_version(selected_value)
                 await interaction.channel.edit(name=f'Using model: {selected_model.version}')
                 await interaction.response.edit_message(**DiscordUtil.generate_model_options(selected_model))
             except Exception:  # Reset to default
-                await interaction.channel.edit(name=f'Using model: {GPT.DEFAULT_MODEL.version}')
+                await interaction.channel.edit(name=f'Using model: {DEFAULT_MODEL.version}')
                 await interaction.response.edit_message(**DiscordUtil.generate_model_options())
 
         # Temperature selected
@@ -85,7 +91,7 @@ async def on_reaction(payload: discord.RawReactionActionEvent):
         channel = await discord_bot.fetch_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
         await message.delete()
-        await DiscordUtil.collect_and_send(channel, gpt_client)
+        await DiscordUtil.collect_and_send(channel, llm_clients)
 
 
 @discord_bot.listen('on_message')
@@ -110,7 +116,7 @@ async def on_message(message: discord.Message):
     if message.content.startswith(('!', '?')):
         await discord_bot.process_commands(message)
         return
-    await DiscordUtil.collect_and_send(message.channel, gpt_client)
+    await DiscordUtil.collect_and_send(message.channel, llm_clients)
 
 
 if __name__ == '__main__':
