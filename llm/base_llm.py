@@ -70,6 +70,7 @@ class LLM(ABC):
             if msg.system_content != msg.content:
                 continue
 
+            role = 'assistant' if msg.author.bot else 'user'
             contents = []
             # Handle message attachments
             for attachment in msg.attachments:
@@ -90,9 +91,13 @@ class LLM(ABC):
             if reached_token_limit:
                 break
 
-            # Insert at the beginning
+            # Extend existing content if same role
+            if messages[-1]['role'] == role:
+                messages[-1]['content'].extend(contents)
+                continue
+            
             messages.append({
-                'role': 'assistant' if msg.author.bot else 'user',
+                'role': role,
                 'content': contents
             })
 
