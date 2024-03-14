@@ -45,12 +45,10 @@ class DiscordUtil:
     @staticmethod
     async def collect_and_send(thread: discord.Thread, llm_clients: Dict[str, LLM]) -> None:
         """
-        Collects history messages from the thread, communicates with the LLM, and sends the assistant's response.
+        Collects history messages from the thread, communicates with the LLM, and sends the response back.
 
         This function is responsible for collecting messages from the given thread, constructing a payload
-        to send to the LLM, and sending the assistant's response back to the thread.
-
-        If a RateLimitError occurs, it renders a RetryButton for retrying the process.
+        to send to the LLM, and sending the response back to the thread.
 
         Args:
             thread (discord.Thread): The thread where messages are collected and the assistant's response is sent.
@@ -58,6 +56,7 @@ class DiscordUtil:
 
         Raises:
             openai.error.RateLimitError: If the rate limit is exceeded for the GPT API call.
+                It renders a RetryButton for retrying the process.
         """
         async with (thread.typing()):
             try:

@@ -1,11 +1,9 @@
 # base_llm.py
-import base64
 from abc import ABC, abstractmethod
 
 from typing import List, Dict
 
 import discord
-import requests
 
 from constants import LLMModel
 
@@ -14,15 +12,10 @@ class LLMException(Exception):
     pass
 
 
-
-
 class LLM(ABC):
     """
     Abstract base class for Language Model (LLM) implementations.
     """
-
-    def __init__(self):
-        self.model = None
 
     @abstractmethod
     async def communicate(self, history: List[discord.Message],
@@ -34,42 +27,28 @@ class LLM(ABC):
         An abstract method for communicating with a language model using a Discord thread.
 
         Args:
-            history (List[discord.Message]): The Discord message history to use for the communication.
-            model (LLMModel): The language model to use for generating the communication.
+            history (List[discord.Message]): The Discord message history to assemble for the communication.
+            model (LLMModel): The language model to use for communication.
             temperature (float): The temperature parameter for controlling the randomness of the generated text.
-            top_p (float): The nucleus sampling parameter for generating the text.
+            top_p (float): The nucleus sampling parameter for selecting the most probable tokens.
             system_message (str): The system message to be communicated.
 
         Returns:
-            str: The generated communication message.
+            str: The generated LLM response.
         """
         pass
 
-    @abstractmethod
-    async def _calculate_tokens(self, content: list[dict[str, str]], model: LLMModel) -> int:
+    async def _collect_payload(self, history: List[discord.Message], model: LLMModel, system_message: str) -> List[Dict]:
         """
-        Calculates the number of tokens required to process a message.
-
-        Args:
-            content (str): the message to process.
-            model (GPTModel): the OpenAI model to use.
-
-        Returns:
-            num_tokens (int): the number of tokens required to process the message.
-        """
-        pass
-
-    async def collect_payload(self, history: List[discord.Message], model: LLMModel, system_message: str) -> List[Dict]:
-        """
-        Assembled LLM payload from messages in a Discord thread.
+        Assemble an LLM payload from given message history in a Discord thread.
 
         Args:
             history (List[discord.Message]): The Discord message history to use for the communication.
             model (LLMModel): The language model to use for generating the communication.
-            system_message (str): The system message to be communicated.
+            system_message (str): The system message to be used.
 
         Returns:
-            str: The generated communication message.
+            str: The generated communication payload.
         """
         messages = []
         tokens = 0
@@ -125,36 +104,27 @@ class LLM(ABC):
 
     async def _handle_attachment(self, attachment: discord.Attachment) -> list[dict[str, str]]:
         """
-        Handles an attachment by downloading its content and converting it to the appropriate format.
+        Handles Discord attachment by downloading its content and converting it to the appropriate format.
+
         Args:
             attachment (discord.Attachment): the attachment to handle.
         Returns:
             content (list[dict[str, str]]): the processed attachment content.
         Raises:
-            BotGPTException: if the attachment type is unsupported or failed to download.
+            LLMException: if the attachment type is unsupported or failed to download.
         """
-        content_type = attachment.content_type
-        if 'text/plain' in content_type:
-            response = requests.get(attachment.url)
-            if response.status_code == 200:
-                return [{
-                    'type': 'text',
-                    'text': response.text
-                }]
-            else:
-                raise LLMException(f'Failed to download attachment: {response.status_code}')
-        elif content_type in ('image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'):
-            response = requests.get(attachment.url)
-            if response.status_code == 200:
-                # Convert the image content to base64
-                base64_image = base64.b64encode(response.content).decode('utf-8')
-                return [{
-                    'type': 'image_url',
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{base64_image}"
-                    }
-                }]
-            else:
-                raise LLMException(f'Failed to download attachment: {response.status_code}')
-        else:
-            raise LLMException(f'Unsupported attachment type: {content_type}')
+        pass
+
+    @abstractmethod
+    async def _calculate_tokens(self, content: list[dict[str, str]], model: LLMModel) -> int:
+        """
+        Calculates the number of tokens from content for given model.
+
+        Args:
+            content (str): the message to process.
+            model (GPTModel): the LLM model to calculate tokens for.
+
+        Returns:
+            num_tokens (int): the number of tokens calculated from supplied content.
+        """
+        pass

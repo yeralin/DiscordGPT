@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from constants import WELCOME_MESSAGE, DEFAULT_MODEL
 from discord_util import DiscordUtil
 from llm.anthropic import Anthropic
-from llm.gpt import GPT
+from llm.openai import OpenAI
 from llm.base_llm import LLMModel
 
 intents = discord.Intents.default()
@@ -20,7 +20,7 @@ discord_bot = commands.Bot(command_prefix='!', intents=intents)
 
 llm_clients = {
     'Anthropic': Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY')),
-    'OpenAI': GPT(api_key=os.getenv('OPENAI_API_KEY'))
+    'OpenAI': OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 }
 
 
@@ -99,7 +99,7 @@ async def on_message(message: discord.Message):
     """
     This function is called every time a message is sent in any channel the bot is a member of.
 
-    The message content is used to construct a payload for the OpenAI GPT API.
+    The message content is used to construct a payload for Large Language Model API communication.
     The response from the API is then sent back to the original thread using the `safe_send()` function.
 
     Args:

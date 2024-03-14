@@ -3,3 +3,4 @@ anthropic
 python-dotenv
 discord.py
 tiktoken
+Pillow

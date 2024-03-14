@@ -48,7 +48,7 @@ To learn more visit https://platform.openai.com/docs/guides/chat
 
 DEFAULT_SYSTEM_MESSAGE = """You are a helpful assistant."""
 
-DEFAULT_MODEL = LLMModel.GPT_4_TURBO
+DEFAULT_MODEL = LLMModel.GPT_4_VISION
 DEFAULT_TEMPERATURE = 1.0
 DEFAULT_TOP_P = 1.0
 DEFAULT_MAX_TOKENS = 1000

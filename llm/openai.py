@@ -1,20 +1,24 @@
 import base64
-from typing import List
+import math
+from io import BytesIO
+from typing import List, Dict
 
 import discord
 import requests
-from anthropic import AsyncAnthropic
+import tiktoken
+from PIL import Image
+from openai import AsyncOpenAI
 
-from constants import LLMModel, DEFAULT_MAX_TOKENS
+from constants import LLMModel
 from llm.base_llm import LLM, LLMException
 
 
-class Anthropic(LLM):
-    """A class to encapsulate Anthropic API related functionalities."""
+class OpenAI(LLM):
+    """A class to encapsulate OpenAI GPT related functionalities."""
 
     def __init__(self, api_key):
         super().__init__()
-        self.client = AsyncAnthropic(api_key=api_key)
+        self.client = AsyncOpenAI(api_key=api_key)
 
     async def communicate(self, history: List[discord.Message],
                           model: LLMModel,
@@ -35,17 +39,15 @@ class Anthropic(LLM):
             str: The generated LLM response.
         """
         messages = await self._collect_payload(history, model, system_message)
-        messages.pop(0)  # Remove system entry (Anthropic takes it as a separate field)
-
-        response = await self.client.messages.create(
+        response = await self.client.chat.completions.create(
             model=model.version,
-            max_tokens=DEFAULT_MAX_TOKENS,
+            messages=messages,
             temperature=temperature,
             top_p=top_p,
-            system=system_message,
-            messages=messages
+            max_tokens=4096 if model == LLMModel.GPT_4_VISION else None
         )
-        return response.content[0].text
+        gpt_response = response.choices[0].message.content
+        return gpt_response
 
     async def _handle_attachment(self, attachment: discord.Attachment) -> list[dict[str, str]]:
         """
@@ -74,11 +76,9 @@ class Anthropic(LLM):
                 # Convert the image content to base64
                 base64_image = base64.b64encode(response.content).decode('utf-8')
                 return [{
-                    'type': 'image',
-                    "source": {
-                        "type": "base64",
-                        "media_type": content_type,
-                        "data": base64_image
+                    'type': 'image_url',
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}"
                     }
                 }]
             else:
@@ -97,11 +97,23 @@ class Anthropic(LLM):
         Returns:
             num_tokens (int): the number of tokens calculated from supplied content.
         """
-        tokens = 0
-        for entry in content:
-            if entry['type'] == 'text':
-                tokens += await self.client.count_tokens(entry['text'])
-            elif entry['type'] == 'image_url':
-                """TODO: Calculate image tokens once defined by Anthropic"""
-                pass
-        return tokens
+        try:
+            encoding = tiktoken.encoding_for_model(model.version)
+            tokens = 0
+            for entry in content:
+                if entry['type'] == 'text':
+                    tokens += len(encoding.encode(entry['text']))
+                elif entry['type'] == 'image_url':
+                    # Calculating tokens for image as per
+                    # https://platform.openai.com/docs/guides/vision/calculating-costs
+                    _, base64_image = entry['image_url']['url'].split(",", 1)
+                    image = Image.open(BytesIO(base64.b64decode(base64_image)))
+                    h = math.ceil(image.height / 512)
+                    w = math.ceil(image.width / 512)
+                    n = w * h
+                    tokens += 85 + 170 * n
+            return tokens
+        except KeyError:
+            raise NotImplementedError(
+                f'_calculate_tokens() is not presently implemented for model {model.version}'
+            )
