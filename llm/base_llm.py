@@ -70,18 +70,14 @@ class LLM(ABC):
             if msg.system_content != msg.content:
                 continue
 
-            entries = []
-
+            contents = []
             # Handle message attachments
             for attachment in msg.attachments:
                 content = await self._handle_attachment(attachment)
                 tokens += await self._calculate_tokens(content, model)
                 if tokens > model.token_limit:
                     reached_token_limit = True
-                entries.append({
-                    'role': 'assistant' if msg.author.bot else 'user',
-                    'content': content
-                })
+                contents.extend(content)
 
             # Handle actual message content
             if msg.content:
@@ -89,16 +85,16 @@ class LLM(ABC):
                 tokens += await self._calculate_tokens(content, model)
                 if tokens > model.token_limit:
                     reached_token_limit = True
-                entries.append({
-                    'role': 'assistant' if msg.author.bot else 'user',
-                    'content': content
-                })
+                contents.extend(content)
 
             if reached_token_limit:
                 break
 
             # Insert at the beginning
-            messages.extend(entries)
+            messages.append({
+                'role': 'assistant' if msg.author.bot else 'user',
+                'content': contents
+            })
 
         return messages
 
