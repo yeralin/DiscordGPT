@@ -6,8 +6,7 @@ class LLMModel(Enum):
     """
     Base class for LLM model enums.
     """
-    GPT_4_VISION = ('OpenAI', 'gpt-4-vision-preview', 128*1000, True)
-    GPT_4_TURBO = ('OpenAI', 'gpt-4-turbo-preview', 128*1000, True)
+    GPT_4_O = ('OpenAI', 'gpt-4o', 128*1000, True)
     CLAUDE_3_OPUS = ('Anthropic', 'claude-3-opus-20240229', 200*1000, True)
     CLAUDE_3_SONNET = ('Anthropic', 'claude-3-sonnet-20240229', 200*1000, True)
 

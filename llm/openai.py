@@ -44,7 +44,7 @@ class OpenAI(LLM):
             messages=messages,
             temperature=temperature,
             top_p=top_p,
-            max_tokens=4096 if model == LLMModel.GPT_4_VISION else None
+            max_tokens=4096 if model == LLMModel.GPT_4_O else None
         )
         gpt_response = response.choices[0].message.content
         return gpt_response
