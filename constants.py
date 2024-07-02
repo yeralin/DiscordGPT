@@ -8,7 +8,7 @@ class LLMModel(Enum):
     """
     GPT_4_O = ('OpenAI', 'gpt-4o', 128*1000, True)
     CLAUDE_3_OPUS = ('Anthropic', 'claude-3-opus-20240229', 200*1000, True)
-    CLAUDE_3_SONNET = ('Anthropic', 'claude-3-sonnet-20240229', 200*1000, True)
+    CLAUDE_3_5_SONNET = ('Anthropic', 'claude-3-5-sonnet-20240620', 200*1000, True)
 
     def __init__(self, vendor: str, version: str, token_limit: int, available: bool):
         self.vendor = vendor
@@ -47,7 +47,7 @@ To learn more visit https://platform.openai.com/docs/guides/chat
 
 DEFAULT_SYSTEM_MESSAGE = """You are a helpful assistant."""
 
-DEFAULT_MODEL = LLMModel.CLAUDE_3_SONNET
+DEFAULT_MODEL = LLMModel.CLAUDE_3_5_SONNET
 DEFAULT_TEMPERATURE = 1.0
 DEFAULT_TOP_P = 1.0
 DEFAULT_MAX_TOKENS = 4096
