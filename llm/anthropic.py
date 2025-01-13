@@ -86,22 +86,23 @@ class Anthropic(LLM):
         else:
             raise LLMException(f'Unsupported attachment type: {content_type}')
 
-    async def _calculate_tokens(self, content: list[dict[str, str]], model: LLMModel) -> int:
+    async def _calculate_tokens(self, role: str, content: list[dict[str, str]], model: LLMModel) -> int:
         """
         Calculates the number of tokens from content for given model.
 
         Args:
+            role (str): who sends the message.
             content (str): the message to process.
             model (GPTModel): the LLM model to calculate tokens for.
 
         Returns:
             num_tokens (int): the number of tokens calculated from supplied content.
         """
-        tokens = 0
-        for entry in content:
-            if entry['type'] == 'text':
-                tokens += await self.client.count_tokens(entry['text'])
-            elif entry['type'] == 'image_url':
-                """TODO: Calculate image tokens once defined by Anthropic"""
-                pass
-        return tokens
+        response = await self.client.messages.count_tokens(
+                model=model.version,
+                messages=[{
+                    'role': role,
+                    'content': content
+                }]
+            )
+        return response.input_tokens

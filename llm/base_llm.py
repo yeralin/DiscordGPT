@@ -58,7 +58,7 @@ class LLM(ABC):
             'type': 'text',
             'text': system_message
         }]
-        tokens += await self._calculate_tokens(system_message_content, model)
+        tokens += await self._calculate_tokens('assistant', system_message_content, model)
         system_message_entry = {'role': 'system', 'content': system_message_content}
         messages.append(system_message_entry)
 
@@ -75,7 +75,7 @@ class LLM(ABC):
             # Handle message attachments
             for attachment in msg.attachments:
                 content = await self._handle_attachment(attachment)
-                tokens += await self._calculate_tokens(content, model)
+                tokens += await self._calculate_tokens(role, content, model)
                 if tokens > model.token_limit:
                     reached_token_limit = True
                 contents.extend(content)
@@ -83,7 +83,7 @@ class LLM(ABC):
             # Handle actual message content
             if msg.content:
                 content = [{'type': 'text', 'text': msg.content}]
-                tokens += await self._calculate_tokens(content, model)
+                tokens += await self._calculate_tokens(role, content, model)
                 if tokens > model.token_limit:
                     reached_token_limit = True
                 contents.extend(content)
@@ -117,11 +117,12 @@ class LLM(ABC):
         pass
 
     @abstractmethod
-    async def _calculate_tokens(self, content: list[dict[str, str]], model: LLMModel) -> int:
+    async def _calculate_tokens(self, role: str, content: list[dict[str, str]], model: LLMModel) -> int:
         """
         Calculates the number of tokens from content for given model.
 
         Args:
+            role (str): who sends the message.
             content (str): the message to process.
             model (GPTModel): the LLM model to calculate tokens for.
 

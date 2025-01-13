@@ -86,11 +86,12 @@ class OpenAI(LLM):
         else:
             raise LLMException(f'Unsupported attachment type: {content_type}')
 
-    async def _calculate_tokens(self, content: list[dict[str, str]], model: LLMModel) -> int:
+    async def _calculate_tokens(self, role: str, content: list[dict[str, str]], model: LLMModel) -> int:
         """
         Calculates the number of tokens from content for given model.
 
         Args:
+            role (str): who sends the message.
             content (str): the message to process.
             model (GPTModel): the LLM model to calculate tokens for.
 
