@@ -7,7 +7,6 @@ class LLMModel(Enum):
     Base class for LLM model enums.
     """
     GPT_4_O = ('OpenAI', 'gpt-4o', 128*1000, True)
-    CLAUDE_3_OPUS = ('Anthropic', 'claude-3-opus-20240229', 200*1000, True)
     CLAUDE_3_5_SONNET = ('Anthropic', 'claude-3-5-sonnet-20240620', 200*1000, True)
 
     def __init__(self, vendor: str, version: str, token_limit: int, available: bool):
